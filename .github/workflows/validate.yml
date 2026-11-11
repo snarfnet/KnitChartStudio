@@ -1,0 +1,15 @@
+name: Validate Knit Chart Studio
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+jobs:
+  test:
+    runs-on: macos-26
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - run: swiftc KnitChartStudio/ChartModel.swift Tests/main.swift -o /tmp/knit-tests && /tmp/knit-tests
+      - run: brew install xcodegen
+      - run: xcodegen generate
+      - run: xcodebuild build -scheme KnitChartStudio -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO
