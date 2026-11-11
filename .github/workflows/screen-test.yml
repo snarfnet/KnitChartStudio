@@ -1,0 +1,41 @@
+name: Knit Chart screenshots and PDF test
+on:
+  workflow_dispatch:
+  push:
+    paths: [.github/workflows/screen-test.yml, KnitChartStudio/**, RenderTests/**, project.yml]
+permissions:
+  contents: read
+jobs:
+  capture:
+    runs-on: macos-26
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        device: [iphone, ipad]
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install xcodegen && xcodegen generate
+      - name: Build and capture
+        env:
+          DEVICE_KIND: ${{ matrix.device }}
+        run: |
+          set -euo pipefail
+          mkdir -p shots
+          xcrun simctl list devices available -j > /tmp/knit-devices.json
+          DEVICE=$(python3 -c 'import os,json; ds=[d for r,ls in json.load(open("/tmp/knit-devices.json"))["devices"].items() if "iOS" in r for d in ls if d.get("isAvailable")]; print(next(d["udid"] for d in ds if "iPhone" in d["name"] and "Pro Max" in d["name"]) if os.environ["DEVICE_KIND"]=="iphone" else next(d["udid"] for d in ds if "iPad Pro 13" in d["name"]))')
+          xcrun simctl boot "$DEVICE" || true
+          xcrun simctl bootstatus "$DEVICE" -b
+          xcodebuild -project KnitChartStudio.xcodeproj -scheme KnitChartStudio -configuration Debug -destination "platform=iOS Simulator,id=$DEVICE" -derivedDataPath build CODE_SIGNING_ALLOWED=NO build > shots/build.log 2>&1
+          if [ "$DEVICE_KIND" = iphone ]; then
+            xcodebuild -project KnitChartStudio.xcodeproj -scheme KnitChartStudio -configuration Debug -destination "platform=iOS Simulator,id=$DEVICE" -derivedDataPath build CODE_SIGNING_ALLOWED=NO test > shots/test.log 2>&1
+          fi
+          xcrun simctl install "$DEVICE" build/Build/Products/Debug-iphonesimulator/KnitChartStudio.app
+          xcrun simctl launch "$DEVICE" com.tokyonasu.KnitChartStudio
+          sleep 25
+          xcrun simctl io "$DEVICE" screenshot "shots/${DEVICE_KIND}.png"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: knit-${{ matrix.device }}
+          path: shots

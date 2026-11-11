@@ -22,3 +22,15 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: 編み図工房
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+    scheme:
+      testTargets: [KnitChartTests]
+  KnitChartTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [RenderTests]
+    dependencies:
+      - target: KnitChartStudio
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.tokyonasu.KnitChartStudio.tests
