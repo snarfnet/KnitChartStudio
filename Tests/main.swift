@@ -11,4 +11,5 @@ precondition(chart.completedRows == 8 && chart[0,0] == .knit && chart.isValid)
 let copy = try JSONDecoder().decode(KnitChart.self, from: JSONEncoder().encode(chart))
 precondition(copy == chart)
 var bad = copy; bad.stitches = []; precondition(!bad.isValid)
+for preset in ChartPreset.allCases { var example = KnitChart(); example.apply(preset); precondition(example.isValid && example.stitches.contains { $0 != .empty }) }
 print("Chart resizing, ordering, validation and persistence passed")

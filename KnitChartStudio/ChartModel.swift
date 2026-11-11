@@ -25,6 +25,21 @@ enum Stitch: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+enum ChartPreset: String, CaseIterable, Identifiable {
+    case stockinette, garter, moss, rib, checker, lace
+    var id: String { rawValue }
+    var name: String {
+        switch self {
+        case .stockinette: return "メリヤス風"
+        case .garter: return "ガーター風"
+        case .moss: return "鹿の子風"
+        case .rib: return "２目ゴム編み風"
+        case .checker: return "市松模様"
+        case .lace: return "透かし模様"
+        }
+    }
+}
+
 struct KnitChart: Codable, Equatable {
     var version = 1
     var title = "新しい編み図"
@@ -60,6 +75,25 @@ struct KnitChart: Codable, Equatable {
         }
         rows = newRows; columns = newColumns; stitches = next
         completedRows = min(completedRows, newRows)
+    }
+
+    mutating func apply(_ preset: ChartPreset) {
+        for row in 0..<rows { for col in 0..<columns {
+            let stitch: Stitch
+            switch preset {
+            case .stockinette: stitch = .knit
+            case .garter: stitch = row.isMultiple(of: 2) ? .knit : .purl
+            case .moss: stitch = (row + col).isMultiple(of: 2) ? .knit : .purl
+            case .rib: stitch = (col / 2).isMultiple(of: 2) ? .knit : .purl
+            case .checker: stitch = (row / 4 + col / 4).isMultiple(of: 2) ? .knit : .purl
+            case .lace:
+                if row.isMultiple(of: 4) && col % 4 == 1 { stitch = .yarnOver }
+                else if row.isMultiple(of: 4) && col % 4 == 2 { stitch = .knitTwoTogether }
+                else { stitch = .knit }
+            }
+            self[row, col] = stitch
+        } }
+        completedRows = 0
     }
 
     /// Rows are stored bottom-up. Odd rows are read right-to-left on a flat chart.

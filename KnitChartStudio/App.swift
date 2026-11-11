@@ -58,6 +58,7 @@ struct ContentView: View {
     @State private var newRows = 16
     @State private var newColumns = 16
     @State private var exported: ExportItem?
+    @State private var pendingPreset: ChartPreset?
     private let ink = Color(red: 0.23, green: 0.25, blue: 0.22)
     private let accent = Color(red: 0.50, green: 0.29, blue: 0.24)
     var body: some View {
@@ -78,6 +79,10 @@ struct ContentView: View {
             }
             .tint(accent)
             .sheet(item: $exported) { ShareView(url: $0.url) }
+            .confirmationDialog("現在の記号を置き換えますか？", isPresented: Binding(get: { pendingPreset != nil }, set: { if !$0 { pendingPreset = nil } }), titleVisibility: .visible) {
+                Button("置き換える") { if let preset = pendingPreset { store.change { $0.apply(preset) } }; pendingPreset = nil }
+                Button("キャンセル", role: .cancel) { pendingPreset = nil }
+            } message: { Text("変更後も「元に戻す」で復元できます。") }
             .sheet(isPresented: $showResize) {
                 NavigationStack { Form { Stepper("段数：\(newRows)", value: $newRows, in: 1...80); Stepper("目数：\(newColumns)", value: $newColumns, in: 1...80); Text("小さくすると範囲外の記号が消えます。元に戻すで復元できます。") }.navigationTitle("編み図の大きさ").toolbar { ToolbarItem(placement: .cancellationAction) { Button("キャンセル") { showResize = false } }; ToolbarItem(placement: .confirmationAction) { Button("変更") { store.change { $0.resize(rows: newRows, columns: newColumns) }; showResize = false } } } }
             }
@@ -90,7 +95,7 @@ struct ContentView: View {
     }
     private var editor: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack { TextField("作品名", text: Binding(get: { store.chart.title }, set: { v in store.change { $0.title = String(v.prefix(80)) } })).font(.headline); Button("大きさ") { newRows = store.chart.rows; newColumns = store.chart.columns; showResize = true } }.padding(.horizontal)
+            HStack { TextField("作品名", text: Binding(get: { store.chart.title }, set: { v in store.change { $0.title = String(v.prefix(80)) } })).font(.headline); Menu("模様") { ForEach(ChartPreset.allCases) { preset in Button(preset.name) { pendingPreset = preset } } }; Button("大きさ") { newRows = store.chart.rows; newColumns = store.chart.columns; showResize = true } }.padding(.horizontal)
             ScrollView(.horizontal, showsIndicators: false) { HStack { ForEach(Stitch.allCases) { stitch in Button { tool = stitch } label: { VStack { Text(stitch.symbol).font(.title2); Text(stitch.name).font(.caption2) }.frame(width: 76, height: 52).background(tool == stitch ? accent.opacity(0.2) : .white, in: RoundedRectangle(cornerRadius: 8)) }.accessibilityLabel(stitch.name) } }.padding(.horizontal) }
             Text("記号を選び、マスをタップ。１段目は右から読みます。") .font(.caption).foregroundStyle(.secondary).padding(.horizontal)
             ScrollView([.vertical, .horizontal]) {
